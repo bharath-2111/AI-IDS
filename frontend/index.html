@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-IDS</title>
+</head>
+<body>
+    <div class="container-box">
+        <h3>AI-IDS Network Intrusion Detection</h3>
+        <div class="dashboard-card">
+            <div id="tag" class="alert alert-success" role="alert" style="display: none;transition: 0.25s;">
+                Sniffing Started
+            </div>
+            <div class="mb-3 controls" style="display: flex;flex-direction: row;gap : 20px">
+                <button class="btn-control start-btn" id="start">Start</button>
+                <button class="btn-control stop-btn" id="stop">Stop</button>
+                <form class="row g-3">
+                    <div class="col-auto">
+                        <input type="text" class="form-control" id="filterField" placeholder="filter">
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary mb-3" onclick="filterSubmit()">filter</button>
+                    </div>
+                </form>
+                <button class="btn-control clear-btn" id="clear">Clear Buffer</button>
+                <button class="btn-control threat-btn" id="mips" data-bs-toggle="modal"
+                    data-bs-target="#threatModal">Malicious IPs</button>
+            </div>
+
+            <!-- Malicious IPs Modal -->
+            <div class="modal fade" id="threatModal" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" style="color: #000;">Threatening IP Addresses</h5>
+                            <button class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <table class="table table-dark">
+                                <thead>
+                                    <tr>
+                                        <th>Source IP</th>
+                                        <th>Threat Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="threat-ip-table"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stat Cards -->
+            <div class="cards">
+                <div class="card threat">
+                    <h4>No. of threat packets</h4>
+                    <p id="threats">0</p>
+                </div>
+                <div class="card normal">
+                    <h4>No. of Normal packets</h4>
+                    <p id="normal">0</p>
+                </div>
+                <div class="card unknown">
+                    <h4>No. of Unknown packets</h4>
+                    <p id="unknown">0</p>
+                </div>
+            </div>
+
+            <!-- Model Info Section -->
+            <div class="model-info-card">
+                <div class="model-info-header">
+                    <div class="model-badge">
+                        <span class="model-badge-dot"></span>
+                        MODEL
+                    </div>
+                    <span class="model-info-title">Detection Engine</span>
+                    <div class="model-divider"></div>
+                </div>
+                <div class="model-info-body">
+                    <div class="model-meta-grid">
+                        <div class="model-meta-item">
+                            <span class="meta-label">Algorithm</span>
+                            <span class="meta-value">Deep Neural Network Classifier</span>
+                        </div>
+                        <div class="model-meta-item">
+                            <span class="meta-label">Accuracy</span>
+                            <span class="meta-value accent-safe">99.06%</span>
+                        </div>
+                        <div class="model-meta-item">
+                            <span class="meta-label">Trained On</span>
+                            <span class="meta-value">CSE-CIC-IDS2018</span>
+                        </div>
+                        <div class="model-meta-item">
+                            <span class="meta-label">Features</span>
+                            <span class="meta-value">26 Network Attributes</span>
+                        </div>
+                        <div class="model-meta-item">
+                            <span class="meta-label">Inference</span>
+                            <span class="meta-value">Real-time · Per Packet</span>
+                        </div>
+                        <div class="model-meta-item">
+                            <span class="meta-label">Version</span>
+                            <span class="meta-value">v1.0.0</span>
+                        </div>
+                    </div>
+                    <p class="model-description">
+                        Packets are captured live from the network interface and passed through a pre-trained
+                        machine learning model. Each packet is classified as <span class="accent-threat">Malicious</span>,
+                        <span class="accent-safe">Normal</span>, or <span class="accent-unknown">Unknown</span>
+                        based on traffic features such as flow duration, byte rates, flag counts, and protocol behavior.
+                        Confidence scores reflect the model's prediction certainty for each classification.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Prediction Table -->
+            <div class="table-section-header">
+                <span class="table-section-label">Live Packet Feed</span>
+                <div class="table-legend">
+                    <span class="legend-item"><span class="legend-dot dot-threat"></span>Malicious</span>
+                    <span class="legend-item"><span class="legend-dot dot-safe"></span>Normal</span>
+                    <span class="legend-item"><span class="legend-dot dot-unknown"></span>Unknown</span>
+                </div>
+            </div>
+            <table class="table" id="table">
+                <thead>
+                    <tr>
+                        <th>SRC_IP</th>
+                        <th>DST_IP</th>
+                        <th>STATE</th>
+                        <th>CONFIDENCE</th>
+                        <th>DECISION</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
