@@ -75,7 +75,6 @@ def batched_predict(model, X_tensor, batch_size=2048):
 
 
 def calibrate_temperature(model, val_x, val_y):
-    """Post-hoc temperature scaling on val set (fixed closure — grads flow correctly)."""
     T = nn.Parameter(torch.ones(1, device=device) * 1.5)
     opt = optim.LBFGS([T], lr=0.01, max_iter=100)
 
@@ -105,13 +104,8 @@ def make_weighted_sampler(y):
         replacement=True,
     )
 
-
+#different thresholds for different attack types
 def tune_thresholds(probs_np, true_np, num_classes, target_precision=0.95):
-    """
-    Find the minimum confidence threshold per class such that precision >= target.
-    Evaluated on the val set — prevents any leakage from test set.
-    Classes that can't reach target precision get threshold capped at 0.99.
-    """
     thresholds = np.full(num_classes, 0.75)   
     for cls in range(num_classes):
         cls_probs = probs_np[:, cls]
@@ -168,7 +162,7 @@ def main():
     X_val_sc   = scaler.transform(X_val)
     X_test_sc  = scaler.transform(X_test)
 
-    # Class weights for FocalLoss (computed on real distribution, not synthetic)
+    # Class weights for FocalLoss 
     class_weights = compute_class_weight(
         class_weight="balanced", classes=np.unique(y_train), y=y_train
     )
@@ -224,16 +218,16 @@ def main():
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), CLIP_GRAD)
             optimizer.step()
-            scheduler.step()          # OneCycleLR steps per batch, not per epoch
+            scheduler.step()          
             total_loss += loss.item()
 
         model.eval()
-        val_logits = batched_predict(model, val_x).to(device)   # must match alpha device
+        val_logits = batched_predict(model, val_x).to(device)   
         val_y_dev  = val_y.to(device)
         val_loss   = criterion(val_logits, val_y_dev).item()
         val_acc    = (val_logits.argmax(1) == val_y_dev).float().mean().item()
 
-        if True:  # print every epoch to track convergence on large dataset
+        if True: 
             print(
                 f"  Epoch {epoch:3d}/{MAX_EPOCHS} | "
                 f"Train Loss: {total_loss/len(train_loader):.4f} | "

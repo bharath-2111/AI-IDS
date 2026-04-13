@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -7,7 +8,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI-IDS</title>
 </head>
+
 <body>
+    
+    <div id="flood-alert" style="display:none;"></div>
     <div class="container-box">
         <h3>AI-IDS Network Intrusion Detection</h3>
         <div class="dashboard-card">
@@ -27,7 +31,7 @@
                 </form>
                 <button class="btn-control clear-btn" id="clear">Clear Buffer</button>
                 <button class="btn-control threat-btn" id="mips" data-bs-toggle="modal"
-                    data-bs-target="#threatModal">Malicious IPs</button>
+                    data-bs-target="#threatModal">Malicious IPs<span class="badge bg-secondary">0</span></button>
             </div>
 
             <!-- Malicious IPs Modal -->
@@ -108,7 +112,8 @@
                     </div>
                     <p class="model-description">
                         Packets are captured live from the network interface and passed through a pre-trained
-                        machine learning model. Each packet is classified as <span class="accent-threat">Malicious</span>,
+                        machine learning model. Each packet is classified as <span
+                            class="accent-threat">Malicious</span>,
                         <span class="accent-safe">Normal</span>, or <span class="accent-unknown">Unknown</span>
                         based on traffic features such as flow duration, byte rates, flag counts, and protocol behavior.
                         Confidence scores reflect the model's prediction certainty for each classification.
@@ -131,6 +136,7 @@
                         <th>SRC_IP</th>
                         <th>DST_IP</th>
                         <th>STATE</th>
+                        <th>THRESHOLD</th>
                         <th>CONFIDENCE</th>
                         <th>DECISION</th>
                     </tr>
@@ -145,4 +151,5 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="script.js"></script>
 </body>
+
 </html>

@@ -58,7 +58,7 @@ def register_socket_events(socketio):
 
     # STOP CAPTURE
     @socketio.on("stop-capturing")
-    def stop_capture(data):
+    def stop_capture(data=None):
         global sniffer
         with sniffer_lock:
             if sniffer is None:

@@ -22,14 +22,14 @@ from models.model import Agent
 
 class Sniffer:
     def __init__(self, emit_fun, iface=None, search_ip=None):
-        self.iface      = iface
-        self.search_ip  = search_ip
+        self.iface      = 'enp0s8'
+        self.search_ip  = '192.168.56.104'
         self.emit_fun   = emit_fun
         self.running    = False
         self.thread     = None
-        self.timeout    = 10
-        self.MIN_PACKETS = 5
-        self.MAX_IDLE   = 30
+        self.timeout    = 3
+        self.MIN_PACKETS = 3
+        self.MAX_IDLE   = 15
         self.flows      = {}
         self.flow_lock  = threading.Lock()
 
@@ -41,13 +41,13 @@ class Sniffer:
         self.model.eval()
 
        
-        self.temperature = checkpoint["temperature"].cpu()
+        self.temperature = checkpoint["temperature"].to(self.device)
 
         self.scaler        = joblib.load(os.path.join(ENCODERS_DIR,"scaler.pkl"))
         self.classes       = joblib.load(os.path.join(ENCODERS_DIR,"classes.pkl"))
         self.proto_encoder = joblib.load(os.path.join(ENCODERS_DIR,"protocol_encoder.pkl"))
 
-        # Per-class thresholds tuned on val set (saves from 25k → 4k false positives)
+        # Per-class thresholds tuned on val set (reduce false positives)
         self.class_thresholds = joblib.load(os.path.join(ENCODERS_DIR,"class_thresholds.pkl"))
 
     # Start 
@@ -70,7 +70,7 @@ class Sniffer:
 
     def sniff_logic(self):
         while self.running:
-            kwargs = dict(iface=self.iface, prn=self.process_packets, store=False, timeout=1)
+            kwargs = dict(iface=self.iface, promisc= True,prn=self.process_packets, store=False, timeout=1)
             if self.search_ip:
                 kwargs["filter"] = f"host {self.search_ip}"
             sniff(**kwargs)
@@ -86,9 +86,11 @@ class Sniffer:
         if not pkt.haslayer(IP):
             return
 
-        ip       = pkt[IP]
+        ip  = pkt[IP]
         proto_num = ip.proto
 
+        if ip.src != self.search_ip and ip.dst != self.search_ip:
+            return
        
         # Pass the raw integer directly — unknown protos fall back to 0
         known = set(self.proto_encoder.classes_)
@@ -184,16 +186,52 @@ class Sniffer:
                 del self.flows[key]
 
         #run inference OUTSIDE the lock — process_packets never blocked
-        results = []
-        for key, flow_snap in to_infer:
-            features = self.extract_features(flow_snap, key[4])
-            results.append(self.predict_flow(key[0], key[1], features))
+        # AFTER CHANGE:
+        if not to_infer:
+            return []
 
+        # Step 1: extract features for ALL expired flows at once
+        all_features = [self.extract_features(flow_snap) for _, flow_snap in to_infer]
+
+        # Step 2: scale them all in ONE call  (shape: N × 26)
+        x_scaled = self.scaler.transform(np.array(all_features))
+
+        # Step 3: run model ONCE for all N flows
+        x_tensor = torch.tensor(x_scaled, dtype=torch.float32).to(self.device)
+        with torch.no_grad():
+            logits = self.model(x_tensor) / self.temperature
+            probs  = torch.softmax(logits, dim=1).cpu().numpy()  # shape: (N, num_classes)
+
+        # Step 4: just classify each row's probabilities — no model call here
+        results = []
+        for i, (key, _) in enumerate(to_infer):
+            results.append(self.classify(key[0], key[1], probs[i]))
         return results
 
     #Feature extraction
+    def classify(self, src_ip, dst_ip, probs):
+        """Turns a probability row into a result dict. No model call here."""
+        pred_class_idx  = int(np.argmax(probs))
+        confidence      = float(probs[pred_class_idx])
+        predicted_class = self.classes[pred_class_idx]
+        class_threshold = float(self.class_thresholds[pred_class_idx])
 
-    def extract_features(self, flow, proto_num):
+        if confidence < class_threshold:
+            decision = "Unknown"
+        elif predicted_class == "Benign":
+            decision = "Normal"
+        else:
+            decision = "Malicious"
+
+        return {
+            "src_ip"    : src_ip,
+            "dst_ip"    : dst_ip,
+            "Class"     : predicted_class,
+            "Confidence": round(confidence, 4),
+            "Threshold" : round(class_threshold, 2),
+            "Decision"  : decision,
+        }
+    def extract_features(self, flow):
         duration        = max(flow["last_seen"] - flow["start_time"], 1e-6)
         total_fwd       = flow["fwd_packets"]
         total_bwd       = flow["bwd_packets"]
@@ -244,13 +282,13 @@ class Sniffer:
     #  Prediction with per-class thresholds
 
     def predict_flow(self, src_ip, dst_ip, features):
-        x        = pd.DataFrame([features], columns=Config.FEATURES)
-        x_scaled = self.scaler.transform(x)
+       # x        = pd.DataFrame([features], columns=Config.FEATURES)
+        x_scaled = self.scaler.transform(np.array(features))
         x_tensor = torch.tensor(x_scaled, dtype=torch.float32).to(self.device)
 
         with torch.no_grad():
             # temperature is on CPU; move to device only for this division
-            logits = self.model(x_tensor) / self.temperature.to(self.device)
+            logits = self.model(x_tensor) / self.temperature
             probs  = torch.softmax(logits, dim=1).cpu().numpy()[0]  # (num_classes,)
 
         pred_class_idx = int(np.argmax(probs))

@@ -1,7 +1,8 @@
 import os
 
 class Config:
-    IFACE = os.environ.get("IFACE", "Wi-Fi")
+   # IFACE = r'\Device\NPF_{66438D3D-E0FD-4DC4-A573-CBA94AC78FBF}'
+    IFACE = 'enp0s8'
     CORS_ORIGINS = "*"
     DEBUG = False
     FEATURES = [

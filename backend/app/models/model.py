@@ -20,7 +20,7 @@ class ResidualBlock(nn.Module):
     def forward(self, x):
         return self.act(self.block(x) + self.skip(x))
 
-
+#main model
 class Agent(nn.Module):
     
     def __init__(self, inp: int, classes: int, dropout: float = 0.3):
@@ -52,7 +52,7 @@ class Agent(nn.Module):
     def forward(self, x):
         return self.head(self.res2(self.res1(self.stem(x))))
 
-
+#loss fun 
 class FocalLoss(nn.Module):
   
     def __init__(self, alpha=None, gamma: float = 2.0):
