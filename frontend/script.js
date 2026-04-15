@@ -18,6 +18,27 @@ const FLOOD = {
 const _malTs    = {};
 const _unkTs    = {};
 const _cooldown = {};
+function updateThreatTable() {
+    const tbody = document.getElementById("threat-ip-table");
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+
+    Object.entries(threatIPs).forEach(([ip, count]) => {
+        const row = document.createElement("tr");
+
+        const ipCell = document.createElement("td");
+        ipCell.textContent = ip;
+
+        const countCell = document.createElement("td");
+        countCell.textContent = count;
+
+        row.appendChild(ipCell);
+        row.appendChild(countCell);
+
+        tbody.appendChild(row);
+    });
+}
 
 function recordAndCheck(ip, decision) {
     const now = Date.now();
@@ -53,10 +74,13 @@ function recordAndCheck(ip, decision) {
                 "danger", true);
 
             threatIPs[ip] = (threatIPs[ip] || 0) + 5;
-            threatCount += 1;
-            document.getElementById("threats").textContent = threatCount;
-            updateThreatBadge();
         }
+
+        threatIPs[ip] = (threatIPs[ip] || 0) + 1;
+        threatCount++;
+        document.getElementById("threats").textContent = threatCount;
+        updateThreatBadge();
+        updateThreatTable();
     }
 
     if (decision === "Unknown") {
@@ -81,13 +105,7 @@ function recordAndCheck(ip, decision) {
                 `Unknown traffic from <b>${ip}</b> turned malicious`,
                 "danger", true);
 
-            threatIPs[ip] = (threatIPs[ip] || 0) + 3;
-            threatCount += 1;
-            document.getElementById("threats").textContent = threatCount;
-            updateThreatBadge();
-
-            if (!_malTs[ip]) _malTs[ip] = [];
-            _malTs[ip].push(now);
+            recordAndCheck(ip, "Malicious");
         }
     }
 }
@@ -162,9 +180,6 @@ function flushPredictions() {
             row.className = "row-normal";
         } else if (data.Decision === "Malicious") {
             recordAndCheck(data.src_ip, "Malicious");
-            threatCount++;
-            threatIPs[data.src_ip] = (threatIPs[data.src_ip] || 0) + 1;
-            updateThreatBadge();
             row.className = "row-attack";
         } else {
             recordAndCheck(data.src_ip, "Unknown");
